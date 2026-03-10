@@ -314,11 +314,12 @@ export function getLogIntegrity(
 }
 
 export function getLatestIntegrityHash(db: Database.Database): string | undefined {
-  // Get the most recent integrity hash by joining with steward_log for timestamp ordering
+  // Get the most recent integrity hash by joining with steward_log for insertion ordering
+  // Uses rowid for deterministic ordering when timestamps collide
   const stmt = db.prepare(`
     SELECT li.integrity_hash FROM log_integrity li
     JOIN steward_log sl ON li.entry_id = sl.id
-    ORDER BY sl.timestamp DESC
+    ORDER BY sl.rowid DESC
     LIMIT 1
   `);
   const row = stmt.get() as { integrity_hash: string } | undefined;
@@ -329,7 +330,7 @@ export function getAllLogIntegrity(db: Database.Database): LogIntegrityEntry[] {
   const stmt = db.prepare(`
     SELECT li.* FROM log_integrity li
     JOIN steward_log sl ON li.entry_id = sl.id
-    ORDER BY sl.timestamp ASC
+    ORDER BY sl.rowid ASC
   `);
   return stmt.all() as LogIntegrityEntry[];
 }
