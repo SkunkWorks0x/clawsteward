@@ -3,7 +3,7 @@
 **Pre-signing policy enforcement gate and behavioral reputation system for DeFAI agents.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-360%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-472%20passing-brightgreen.svg)]()
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5%2B-3178C6.svg)](https://www.typescriptlang.org)
 [![Solana](https://img.shields.io/badge/Solana-v1-9945FF.svg)](https://solana.com)
@@ -47,19 +47,19 @@ pnpm install
 pnpm build
 
 # Register an agent
-pnpm clawsteward register --name "my-agent" --chain solana --address <PUBKEY>
+node dist/index.js register --name "my-agent" --chain solana --address <PUBKEY>
 
 # Start MCP server (for AI agent integration)
-pnpm clawsteward serve
+node dist/index.js serve
 
 # View Steward Score
-pnpm clawsteward score <AGENT_ID>
+node dist/index.js score <AGENT_ID>
 
 # Generate report
-pnpm clawsteward scan --agent <AGENT_ID> --report
+node dist/index.js scan --agent <AGENT_ID> --report
 
 # Launch dashboard
-cd dashboard && pnpm dev
+cd dashboard && pnpm install && pnpm dev
 ```
 
 ## MCP Integration
@@ -182,7 +182,7 @@ The **Steward Leaderboard** is a public dashboard showing all registered agents 
 - **Database:** SQLite via [better-sqlite3](https://www.npmjs.com/package/better-sqlite3) ^11.0.0
 - **CLI:** [Commander.js](https://www.npmjs.com/package/commander) ^12.0.0 + [Chalk](https://www.npmjs.com/package/chalk) ^5.3.0
 - **Dashboard:** Next.js 15 + Tailwind CSS v4
-- **Testing:** Vitest ^2.0.0 (360 tests)
+- **Testing:** Vitest ^2.0.0 (472 tests)
 - **Package Manager:** pnpm
 
 ## Devnet Testing
@@ -207,6 +207,10 @@ Devnet tests are **skipped by default** in the standard `pnpm test` run — they
 ## Chain Support
 
 Currently supports **Solana**. The architecture is chain-agnostic — adding a new chain requires only a new simulator adapter implementing the `ChainSimulator` interface. No changes needed to the policy engine, audit log, or reputation system.
+
+## Security
+
+See [SECURITY.md](./SECURITY.md) for the full security audit report. ClawSteward v0.1.0 has 0 critical and 0 high severity findings.
 
 ## License
 

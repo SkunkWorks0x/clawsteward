@@ -5,13 +5,12 @@ import LeaderboardTable from "@/components/LeaderboardTable";
 export const dynamic = "force-dynamic";
 
 export default function LeaderboardPage() {
-  let entries;
+  let entries: Awaited<ReturnType<typeof getLeaderboard>> = [];
   try {
     const db = getDatabase();
     entries = getLeaderboard(db, { limit: 50, sortBy: "score" });
   } catch {
     // Database not available — show empty state
-    entries = [];
   }
 
   return (

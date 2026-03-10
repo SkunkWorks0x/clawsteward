@@ -2,14 +2,20 @@
   "name": "clawsteward",
   "version": "0.1.0",
   "description": "Pre-signing policy enforcement gate and behavioral reputation system for DeFAI agents — by ClawStack",
-  "author": "Imani @SkunkWorks0x (ClawStack)",
+  "author": "ClawStack <https://clawstack.dev>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SkunkWorks0x/clawsteward"
+  },
+  "keywords": ["defi", "defai", "ai-agents", "policy-enforcement", "solana", "mcp", "security", "reputation"],
   "license": "MIT",
   "type": "module",
+  "main": "dist/index.js",
   "bin": {
     "clawsteward": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp src/db/schema.sql dist/db/schema.sql",
     "dev": "tsx src/index.ts",
     "serve": "tsx src/index.ts serve",
     "test": "vitest run",
