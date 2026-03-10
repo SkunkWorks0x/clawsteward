@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type Database from "better-sqlite3";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -54,6 +55,18 @@ export interface ViolationBreakdown {
   by_severity: Record<string, number>;
   by_rule_type: Record<string, number>;
   total: number;
+}
+
+export interface ScoreHistoryPoint {
+  score: number;
+  computed_at: string;
+}
+
+export interface IntegrityStatus {
+  valid: boolean;
+  entries_checked: number;
+  error?: string;
+  tampered_entry_id?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -197,31 +210,154 @@ export function getAgentDetail(
   };
 }
 
+const SEVERITY_WEIGHTS: Record<string, number> = {
+  critical: 1.0,
+  high: 0.6,
+  medium: 0.3,
+  low: 0.1,
+};
+
 export function getAgentScoreHistory(
   db: Database.Database,
   agentId: string,
   limit: number = 30
-): Array<{ timestamp: string; score: number | null; action: string }> {
-  // Derive score progression from log entries (running approval rate as proxy)
+): ScoreHistoryPoint[] {
+  // Fetch all entries chronologically to compute running score
   const rows = db
     .prepare(
-      `SELECT timestamp, action, compliance_score_delta
+      `SELECT timestamp, action, violations
        FROM steward_log
        WHERE agent_id = ?
-       ORDER BY timestamp DESC
-       LIMIT ?`
+       ORDER BY timestamp ASC`
     )
-    .all(agentId, limit) as Array<{
+    .all(agentId) as Array<{
     timestamp: string;
     action: string;
-    compliance_score_delta: number;
+    violations: string;
   }>;
 
-  return rows.reverse().map((row) => ({
-    timestamp: row.timestamp,
-    score: row.compliance_score_delta,
-    action: row.action,
-  }));
+  if (rows.length === 0) return [];
+
+  // Compute running weighted score at each evaluation point
+  const points: ScoreHistoryPoint[] = [];
+  let totalWeight = 0;
+  let violationWeight = 0;
+
+  for (const row of rows) {
+    totalWeight += 1;
+    if (row.action === "reject") {
+      const violations = JSON.parse(row.violations) as PolicyViolation[];
+      for (const v of violations) {
+        violationWeight += SEVERITY_WEIGHTS[v.severity] ?? 0.1;
+      }
+    }
+    const rate = totalWeight > 0 ? violationWeight / totalWeight : 0;
+    const score = Math.max(0, Math.min(10, 10 * (1 - rate)));
+    points.push({ score: Math.round(score * 10) / 10, computed_at: row.timestamp });
+  }
+
+  // Return the last `limit` points
+  return points.slice(-limit);
+}
+
+// ─── Integrity Verification ───────────────────────────────────────
+
+const GENESIS_HASH = "0".repeat(64);
+
+function computeIntegrityHash(
+  prevHash: string,
+  entryId: string,
+  timestamp: string,
+  action: string,
+  violations: PolicyViolation[]
+): string {
+  const data = prevHash + entryId + timestamp + action + JSON.stringify(violations);
+  return createHash("sha256").update(data).digest("hex");
+}
+
+export function getAgentIntegrityStatus(
+  db: Database.Database,
+  agentId: string
+): IntegrityStatus {
+  const logEntries = db
+    .prepare(
+      `SELECT sl.id, sl.timestamp, sl.action, sl.violations
+       FROM steward_log sl
+       WHERE sl.agent_id = ?
+       ORDER BY sl.rowid ASC`
+    )
+    .all(agentId) as Array<{
+    id: string;
+    timestamp: string;
+    action: string;
+    violations: string;
+  }>;
+
+  if (logEntries.length === 0) {
+    return { valid: true, entries_checked: 0 };
+  }
+
+  // Get integrity entries for this agent's log entries
+  const integrityRows = db
+    .prepare(
+      `SELECT li.entry_id, li.prev_hash, li.integrity_hash
+       FROM log_integrity li
+       JOIN steward_log sl ON li.entry_id = sl.id
+       WHERE sl.agent_id = ?
+       ORDER BY sl.rowid ASC`
+    )
+    .all(agentId) as Array<{
+    entry_id: string;
+    prev_hash: string;
+    integrity_hash: string;
+  }>;
+
+  const integrityMap = new Map(integrityRows.map((r) => [r.entry_id, r]));
+
+  if (logEntries.length !== integrityRows.length) {
+    return {
+      valid: false,
+      entries_checked: 0,
+      error: `Log has ${logEntries.length} entries but integrity table has ${integrityRows.length}`,
+    };
+  }
+
+  // We need to find the prev_hash for the first entry of this agent.
+  // The hash chain is global, not per-agent. We verify per-agent entries
+  // have valid hashes by recomputing each entry individually.
+  for (let i = 0; i < logEntries.length; i++) {
+    const entry = logEntries[i]!;
+    const integrity = integrityMap.get(entry.id);
+
+    if (!integrity) {
+      return {
+        valid: false,
+        entries_checked: i,
+        error: `Missing integrity entry for log entry ${entry.id}`,
+        tampered_entry_id: entry.id,
+      };
+    }
+
+    const violations = JSON.parse(entry.violations) as PolicyViolation[];
+    const expectedHash = computeIntegrityHash(
+      integrity.prev_hash,
+      entry.id,
+      entry.timestamp,
+      entry.action,
+      violations
+    );
+
+    if (integrity.integrity_hash !== expectedHash) {
+      return {
+        valid: false,
+        entries_checked: i,
+        error: `Tampered entry detected: ${entry.id}`,
+        tampered_entry_id: entry.id,
+      };
+    }
+  }
+
+  return { valid: true, entries_checked: logEntries.length };
 }
 
 export function getAgentRecentEvaluations(

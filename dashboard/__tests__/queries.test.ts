@@ -230,7 +230,7 @@ describe("getAgentScoreHistory", () => {
   it("returns score history in chronological order", () => {
     const history = getAgentScoreHistory(db, "agent-001");
     expect(history.length).toBe(3);
-    expect(history[0]!.timestamp < history[1]!.timestamp).toBe(true);
+    expect(history[0]!.computed_at < history[1]!.computed_at).toBe(true);
   });
 
   it("respects limit parameter", () => {
