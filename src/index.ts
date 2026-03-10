@@ -15,6 +15,9 @@ import {
   upsertStewardScore,
 } from "./db/queries.js";
 import { startStdioServer } from "./mcp/server.js";
+import { generateStewardReport } from "./core/report.js";
+import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -134,6 +137,7 @@ program
   .description("Scan an agent's recent evaluation history")
   .requiredOption("--agent <agent_id>", "Agent ID (UUIDv7)")
   .option("--days <number>", "Lookback window in days", "30")
+  .option("--report", "Generate steward-report.md file")
   .action((opts) => {
     const dbPath = program.opts()["db"] as string;
     const days = parseInt(opts.days, 10);
@@ -146,6 +150,16 @@ program
     try {
       const agent = getAgentQuery(db, opts.agent);
       if (!agent) fatal(`Agent not found: ${opts.agent}`);
+
+      // --report flag: generate markdown file and exit
+      if (opts.report) {
+        const markdown = generateStewardReport(opts.agent, db);
+        if (!markdown) fatal(`Agent not found: ${opts.agent}`);
+        const outPath = resolve("steward-report.md");
+        writeFileSync(outPath, markdown, "utf-8");
+        console.log(chalk.green(`Steward Report written to ${outPath}`));
+        return;
+      }
 
       const since = new Date(
         Date.now() - days * 24 * 60 * 60 * 1000,
