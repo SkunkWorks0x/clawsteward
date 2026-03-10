@@ -185,6 +185,25 @@ The **Steward Leaderboard** is a public dashboard showing all registered agents 
 - **Testing:** Vitest ^2.0.0 (360 tests)
 - **Package Manager:** pnpm
 
+## Devnet Testing
+
+ClawSteward can be tested against live Solana devnet infrastructure. These tests validate the full pipeline: RPC simulation, policy evaluation, audit logging, and score computation against real chain data.
+
+```bash
+# Set your Helius API key (free at https://www.helius.dev/)
+export HELIUS_API_KEY=your-key-here
+
+# Run devnet integration tests
+pnpm test:devnet
+
+# Run live demo
+pnpm demo:devnet
+```
+
+Devnet tests are **skipped by default** in the standard `pnpm test` run — they only execute when `HELIUS_API_KEY` is set and `pnpm test:devnet` is invoked explicitly. This ensures CI stays green without network access.
+
+**Note:** Jupiter Price API serves mainnet prices only. USD estimation tests use the mainnet SOL mint for price lookups, which is valid since price queries don't interact with devnet state. Devnet airdrop faucets may be rate-limited — if the airdrop fails, tests skip gracefully with a warning.
+
 ## Chain Support
 
 Currently supports **Solana**. The architecture is chain-agnostic — adding a new chain requires only a new simulator adapter implementing the `ChainSimulator` interface. No changes needed to the policy engine, audit log, or reputation system.

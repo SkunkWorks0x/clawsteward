@@ -18,6 +18,8 @@
     "dashboard": "cd dashboard && next dev",
     "dashboard:build": "cd dashboard && next build",
     "dashboard:test": "cd dashboard && vitest run",
+    "test:devnet": "vitest run test/devnet/ --no-file-parallelism",
+    "demo:devnet": "npx tsx test/devnet/demo.ts",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit"
   },
