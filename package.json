@@ -15,8 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dashboard": "cd src/dashboard && next dev",
-    "dashboard:build": "cd src/dashboard && next build",
+    "dashboard": "cd dashboard && next dev",
+    "dashboard:build": "cd dashboard && next build",
+    "dashboard:test": "cd dashboard && vitest run",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit"
   },
