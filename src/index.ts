@@ -16,8 +16,9 @@ import {
 } from "./db/queries.js";
 import { startStdioServer } from "./mcp/server.js";
 import { generateStewardReport } from "./core/report.js";
-import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, writeFileSync } from "node:fs";
+import { resolve, join as pathJoin } from "node:path";
+import { spawn } from "node:child_process";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -127,13 +128,16 @@ program
         signer_address: opts.address,
       });
 
-      console.log(chalk.green("Agent registered successfully"));
+      console.log(chalk.green("\n  ✓ Agent registered successfully\n"));
       console.log(`  ${chalk.bold("Agent ID:")}  ${agent.id}`);
       console.log(`  ${chalk.bold("Name:")}      ${agent.name}`);
       console.log(`  ${chalk.bold("Chain:")}     ${opts.chain}`);
       console.log(`  ${chalk.bold("Signer:")}    ${opts.address}`);
       console.log(
         `  ${chalk.bold("Registered:")} ${agent.registered_at}`,
+      );
+      console.log(
+        chalk.gray(`\n  Next: evaluate a transaction with:\n  clawsteward evaluate --agent ${agent.id} --tx <BASE64>\n`),
       );
     } catch (err) {
       fatal(err instanceof Error ? err.message : String(err));
@@ -372,14 +376,51 @@ program
 
 program
   .command("dashboard")
-  .description("Start the Steward Dashboard")
-  .option("--port <number>", "Dashboard port", "3100")
+  .description("Start the Steward Dashboard (Next.js dev server)")
+  .option("--port <number>", "Dashboard port", "3000")
   .action((opts) => {
+    const dashboardDir = pathJoin(process.cwd(), "src", "dashboard");
+
+    if (!existsSync(pathJoin(dashboardDir, "package.json"))) {
+      console.error(
+        chalk.red(
+          "Dashboard not found. The Next.js dashboard has not been set up yet.",
+        ),
+      );
+      console.error(
+        chalk.gray(
+          `\nExpected dashboard at: ${dashboardDir}\n\nTo set up the dashboard:\n  1. Create src/dashboard/ with a Next.js app\n  2. Run: cd src/dashboard && pnpm install\n  3. Then: clawsteward dashboard\n`,
+        ),
+      );
+      process.exit(1);
+    }
+
+    const port = opts.port;
+    console.log(BRAND_BANNER);
     console.log(
-      chalk.yellow(
-        `Dashboard coming in v0.2 — clawstack.dev (port ${opts.port} reserved)`,
+      chalk.hex("#F97316")(
+        `  Dashboard starting at http://localhost:${port}\n`,
       ),
     );
+
+    const child = spawn("pnpm", ["dev", "--port", port], {
+      cwd: dashboardDir,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        PORT: port,
+        DATABASE_PATH: resolve(program.opts()["db"] as string),
+      },
+    });
+
+    child.on("error", (err) => {
+      console.error(chalk.red(`Failed to start dashboard: ${err.message}`));
+      process.exit(1);
+    });
+
+    child.on("exit", (code) => {
+      process.exit(code ?? 0);
+    });
   });
 
 // ─── export ──────────────────────────────────────────────────────
@@ -389,6 +430,7 @@ program
   .description("Export Steward Log entries for compliance or analysis")
   .requiredOption("--agent <agent_id>", "Agent ID (UUIDv7)")
   .option("--format <format>", "Output format (json|csv)", "json")
+  .option("--output <path>", "Output file path (defaults to stdout)")
   .action((opts) => {
     const dbPath = program.opts()["db"] as string;
     const format = opts.format as string;
@@ -409,8 +451,9 @@ program
         return;
       }
 
+      let output: string;
       if (format === "json") {
-        console.log(JSON.stringify(entries, null, 2));
+        output = JSON.stringify(entries, null, 2);
       } else {
         // CSV
         const headers = [
@@ -426,7 +469,7 @@ program
           "estimated_usd_value",
           "estimated_slippage_pct",
         ];
-        console.log(headers.join(","));
+        const rows = [headers.join(",")];
         for (const e of entries) {
           const row = [
             e.id,
@@ -441,13 +484,23 @@ program
             e.estimated_usd_value,
             e.estimated_slippage_pct,
           ];
-          console.log(row.join(","));
+          rows.push(row.join(","));
         }
+        output = rows.join("\n");
       }
 
-      console.error(
-        chalk.green(`\nExported ${entries.length} entries (${format})`),
-      );
+      if (opts.output) {
+        const outPath = resolve(opts.output);
+        writeFileSync(outPath, output, "utf-8");
+        console.log(
+          chalk.green(`\n  ✓ Exported ${entries.length} entries (${format}) to ${outPath}\n`),
+        );
+      } else {
+        console.log(output);
+        console.error(
+          chalk.green(`\nExported ${entries.length} entries (${format})`),
+        );
+      }
     } catch (err) {
       fatal(err instanceof Error ? err.message : String(err));
     } finally {
@@ -475,11 +528,11 @@ program
       if (result.valid) {
         console.log(
           chalk.green(
-            `\nSteward Log integrity: PASS (${result.entries_checked} entries verified)`,
+            `\n  ✓ Steward Log integrity: PASS (${result.entries_checked} entries verified)\n`,
           ),
         );
       } else {
-        console.log(chalk.red(`\nSteward Log integrity: FAIL`));
+        console.log(chalk.red(`\n  ✗ Steward Log integrity: FAIL`));
         console.log(chalk.red(`  Error: ${result.error}`));
         if (result.tampered_entry_id) {
           console.log(
@@ -493,8 +546,6 @@ program
         );
         process.exit(1);
       }
-
-      console.log();
     } catch (err) {
       fatal(err instanceof Error ? err.message : String(err));
     } finally {
@@ -502,4 +553,20 @@ program
     }
   });
 
-program.parse();
+// ─── Top-level error handler ────────────────────────────────────
+
+async function main() {
+  try {
+    await program.parseAsync();
+  } catch (err) {
+    const verbose = process.argv.includes("--verbose");
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red(`Error: ${message}`));
+    if (verbose && err instanceof Error && err.stack) {
+      console.error(chalk.gray(err.stack));
+    }
+    process.exit(1);
+  }
+}
+
+main();

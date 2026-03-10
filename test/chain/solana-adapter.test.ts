@@ -383,10 +383,11 @@ describe("SolanaSimulator", () => {
         { asset: "SOL_MINT", symbol: "SOL", delta: 1.0, usd_value: 0 },
       ];
 
-      await expect(sim.estimateUsdValue(assets)).rejects.toThrow("USD estimation failed");
+      const usd = await sim.estimateUsdValue(assets);
+      expect(usd).toBeNull();
     });
 
-    it("throws on network error to Jupiter", async () => {
+    it("returns null on network error to Jupiter", async () => {
       const mockFetch = async () => {
         throw new Error("DNS resolution failed");
       };
@@ -400,7 +401,8 @@ describe("SolanaSimulator", () => {
         { asset: "SOL_MINT", symbol: "SOL", delta: 1.0, usd_value: 0 },
       ];
 
-      await expect(sim.estimateUsdValue(assets)).rejects.toThrow("USD estimation failed");
+      const usd = await sim.estimateUsdValue(assets);
+      expect(usd).toBeNull();
     });
   });
 

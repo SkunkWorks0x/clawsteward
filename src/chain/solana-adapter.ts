@@ -17,6 +17,7 @@ import type {
 } from "./types.js";
 
 const DEFAULT_JUPITER_PRICE_URL = "https://price.jup.ag/v6";
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
 export class SolanaSimulator implements ChainSimulator {
   readonly chain = "solana";
@@ -24,11 +25,17 @@ export class SolanaSimulator implements ChainSimulator {
   private readonly rpcUrl: string;
   private readonly jupiterPriceUrl: string;
   private readonly fetchFn: typeof globalThis.fetch;
+  private readonly fetchTimeoutMs: number;
 
   constructor(options: SolanaSimulatorOptions) {
     this.rpcUrl = options.heliusRpcUrl;
     this.jupiterPriceUrl = options.jupiterPriceApiUrl ?? DEFAULT_JUPITER_PRICE_URL;
     this.fetchFn = options.fetch ?? globalThis.fetch;
+    this.fetchTimeoutMs = options.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
+  }
+
+  private createTimeoutSignal(): AbortSignal {
+    return AbortSignal.timeout(this.fetchTimeoutMs);
   }
 
   async simulate(tx: unknown, context: SimulationContext): Promise<SimulationResult> {
@@ -115,16 +122,19 @@ export class SolanaSimulator implements ChainSimulator {
     }
   }
 
-  async estimateUsdValue(assets: AssetDelta[]): Promise<number> {
+  async estimateUsdValue(assets: AssetDelta[]): Promise<number | null> {
     if (assets.length === 0) return 0;
 
     const mints = [...new Set(assets.map((a) => a.asset))];
     const url = `${this.jupiterPriceUrl}/price?ids=${mints.join(",")}`;
 
     try {
-      const response = await this.fetchFn(url);
+      const response = await this.fetchFn(url, {
+        signal: this.createTimeoutSignal(),
+      });
       if (!response.ok) {
-        throw new Error(`Jupiter API returned ${response.status}`);
+        // Jupiter API failure — return null, don't crash
+        return null;
       }
       const data = (await response.json()) as JupiterPriceResponse;
 
@@ -136,10 +146,9 @@ export class SolanaSimulator implements ChainSimulator {
         }
       }
       return totalUsd;
-    } catch (err) {
-      throw new Error(
-        `USD estimation failed: ${err instanceof Error ? err.message : String(err)}`
-      );
+    } catch {
+      // Network timeout, abort, or parse error — USD estimation unavailable
+      return null;
     }
   }
 
@@ -151,7 +160,7 @@ export class SolanaSimulator implements ChainSimulator {
     mint: string,
     amount: bigint,
     decimals: number
-  ): Promise<number> {
+  ): Promise<number | null> {
     const humanAmount = Number(amount) / 10 ** decimals;
     const assets: AssetDelta[] = [
       { asset: mint, symbol: "", delta: humanAmount, usd_value: 0 },

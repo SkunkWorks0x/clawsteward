@@ -8,5 +8,5 @@ export interface ChainSimulator {
   chain: string;
   simulate(tx: unknown, context: SimulationContext): Promise<SimulationResult>;
   validateAddress(address: string): boolean;
-  estimateUsdValue(assets: AssetDelta[]): Promise<number>;
+  estimateUsdValue(assets: AssetDelta[]): Promise<number | null>;
 }

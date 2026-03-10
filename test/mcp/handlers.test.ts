@@ -46,7 +46,7 @@ function createMockSimulator(
     validateAddress(_addr: string): boolean {
       return true;
     },
-    async estimateUsdValue(_assets: AssetDelta[]): Promise<number> {
+    async estimateUsdValue(_assets: AssetDelta[]): Promise<number | null> {
       return overrides.estimated_usd_value ?? 500;
     },
   };
@@ -71,7 +71,7 @@ function createFailingSimulator(error: string): ChainSimulator {
     validateAddress(): boolean {
       return true;
     },
-    async estimateUsdValue(): Promise<number> {
+    async estimateUsdValue(): Promise<number | null> {
       return 0;
     },
   };

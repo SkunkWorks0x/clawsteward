@@ -39,4 +39,5 @@ export interface SolanaSimulatorOptions {
   heliusRpcUrl: string;
   jupiterPriceApiUrl?: string;
   fetch?: typeof globalThis.fetch;
+  fetchTimeoutMs?: number;
 }

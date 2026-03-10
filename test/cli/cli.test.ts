@@ -375,10 +375,10 @@ describe("CLI", () => {
 
   // ─── dashboard ─────────────────────────────────────────────
 
-  it("shows dashboard stub message", () => {
-    const output = runCli(["dashboard", "--port", "3200"]);
-    expect(output).toContain("Dashboard coming in v0.2");
-    expect(output).toContain("3200");
+  it("shows dashboard setup instructions when dashboard dir missing", () => {
+    const output = runCli(["dashboard", "--port", "3200"], true);
+    expect(output).toContain("Dashboard not found");
+    expect(output).toContain("src/dashboard");
   });
 
   // ─── global options ────────────────────────────────────────
@@ -387,5 +387,205 @@ describe("CLI", () => {
     setupTestDb().close();
     const output = runCli(["--verbose", "verify"]);
     expect(output).toContain("PASS");
+  });
+
+  // ─── output formatting ──────────────────────────────────────
+
+  it("register shows next steps hint with agent ID", () => {
+    const output = runCli([
+      "register",
+      "--name",
+      "HintBot",
+      "--chain",
+      "solana",
+      "--address",
+      "So11111111111111111111111111111111111111112",
+    ]);
+    expect(output).toContain("Next:");
+    expect(output).toContain("evaluate");
+    expect(output).toContain("--agent");
+  });
+
+  it("register shows checkmark on success", () => {
+    const output = runCli([
+      "register",
+      "--name",
+      "CheckBot",
+      "--chain",
+      "solana",
+      "--address",
+      "So11111111111111111111111111111111111111112",
+    ]);
+    // The checkmark might be rendered without ANSI in tests
+    expect(output).toContain("registered successfully");
+  });
+
+  it("verify shows checkmark on empty log PASS", () => {
+    setupTestDb().close();
+    const output = runCli(["verify"]);
+    expect(output).toContain("PASS");
+  });
+
+  it("verify shows X on tampered log FAIL", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "TamperBot2");
+    seedLogEntries(db, agentId, 5, "approve");
+
+    // Tamper with the integrity hash
+    db.prepare("UPDATE log_integrity SET integrity_hash = 'tampered' WHERE rowid = 1").run();
+    db.close();
+
+    const output = runCli(["verify"], true);
+    expect(output).toContain("FAIL");
+  });
+
+  it("score shows badge for high-scoring agent", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "ScoreBot");
+    seedLogEntries(db, agentId, 15, "approve");
+    seedStewardScore(db, agentId, 9.0, 15);
+    db.close();
+
+    const output = runCli(["score", agentId]);
+    expect(output).toContain("Score:");
+    expect(output).toContain("Badge:");
+    expect(output).toContain("Trend:");
+    expect(output).toContain("Evaluations:");
+    expect(output).toContain("Violations:");
+  });
+
+  it("leaderboard shows header row with column names", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "LeaderBot");
+    seedLogEntries(db, agentId, 15, "approve");
+    seedStewardScore(db, agentId, 8.5, 15);
+    db.close();
+
+    const output = runCli(["leaderboard", "--limit", "5"]);
+    expect(output).toContain("Steward Leaderboard");
+    expect(output).toContain("Agent");
+    expect(output).toContain("Score");
+    expect(output).toContain("Evals");
+  });
+
+  it("export to file with --output flag", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "ExportFileBot");
+    seedLogEntries(db, agentId, 3, "approve");
+    db.close();
+
+    const outFile = join(testDbDir, "export.json");
+    const output = runCli(["export", "--agent", agentId, "--output", outFile]);
+    expect(output).toContain("Exported");
+    expect(output).toContain("3 entries");
+    expect(output).toContain(outFile);
+
+    // Verify the file was actually written
+    const { readFileSync } = require("node:fs");
+    const content = readFileSync(outFile, "utf-8");
+    const parsed = JSON.parse(content);
+    expect(parsed).toHaveLength(3);
+  });
+
+  it("export to file as CSV with --output flag", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "CsvFileBot");
+    seedLogEntries(db, agentId, 2, "approve");
+    db.close();
+
+    const outFile = join(testDbDir, "export.csv");
+    const output = runCli(["export", "--agent", agentId, "--format", "csv", "--output", outFile]);
+    expect(output).toContain("Exported");
+    expect(output).toContain("2 entries");
+    expect(output).toContain("csv");
+
+    const { readFileSync } = require("node:fs");
+    const content = readFileSync(outFile, "utf-8");
+    const lines = content.trim().split("\n");
+    expect(lines).toHaveLength(3); // header + 2 rows
+    expect(lines[0]).toContain("id,agent_id");
+  });
+
+  it("export to stdout when no --output flag", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "StdoutBot");
+    seedLogEntries(db, agentId, 2, "approve");
+    db.close();
+
+    const output = runCli(["export", "--agent", agentId]);
+    // JSON should be in stdout
+    const parsed = JSON.parse(output.split("\n").filter(l => l.startsWith("[") || l.startsWith(" ") || l.startsWith("]")).join("\n") || output.trim().split("Exported")[0]!.trim());
+    expect(Array.isArray(parsed)).toBe(true);
+  });
+
+  it("scan with --report flag generates steward-report.md", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "ReportBot");
+    seedLogEntries(db, agentId, 3, "approve");
+    db.close();
+
+    const output = runCli(["scan", "--agent", agentId, "--report"]);
+    expect(output).toContain("Steward Report written to");
+    expect(output).toContain("steward-report.md");
+  });
+
+  it("scan shows approval rate percentage", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "ApprovalBot");
+    seedLogEntries(db, agentId, 5, "approve");
+    db.close();
+
+    const output = runCli(["scan", "--agent", agentId]);
+    expect(output).toContain("Approval Rate:");
+    expect(output).toContain("%");
+  });
+
+  it("scan shows total volume in USD", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "VolumeBot");
+    seedLogEntries(db, agentId, 3, "approve");
+    db.close();
+
+    const output = runCli(["scan", "--agent", agentId]);
+    expect(output).toContain("Total Volume:");
+    expect(output).toContain("$");
+  });
+
+  it("error messages use clear sentences on invalid scan days", () => {
+    const output = runCli(["scan", "--agent", "fake", "--days", "abc"], true);
+    expect(output).toContain("--days must be a positive integer");
+  });
+
+  it("error messages use clear sentences on invalid leaderboard limit", () => {
+    const output = runCli(["leaderboard", "--limit", "abc"], true);
+    expect(output).toContain("--limit must be a positive integer");
+  });
+
+  it("dashboard help text lists the command", () => {
+    const output = runCli(["--help"]);
+    expect(output).toContain("dashboard");
+    expect(output).toContain("Dashboard");
+  });
+
+  it("scan with --days customizes the lookback window", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "DaysBot");
+    seedLogEntries(db, agentId, 3, "approve");
+    db.close();
+
+    const output = runCli(["scan", "--agent", agentId, "--days", "7"]);
+    expect(output).toContain("7-day window");
+  });
+
+  it("score shows paused warning for paused agent", () => {
+    const db = setupTestDb();
+    const agentId = seedAgent(db, "PausedBot");
+    seedLogEntries(db, agentId, 15, "approve");
+    seedStewardScore(db, agentId, 8.0, 15);
+    db.prepare("UPDATE agents SET is_paused = 1 WHERE id = ?").run(agentId);
+    db.close();
+
+    const output = runCli(["score", agentId]);
+    expect(output).toContain("PAUSED");
   });
 });

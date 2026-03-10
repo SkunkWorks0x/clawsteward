@@ -23,9 +23,21 @@ export function getDatabase(dbPath?: string): Database.Database {
   const resolvedPath = dbPath ?? process.env["DATABASE_PATH"] ?? DEFAULT_DB_PATH;
 
   // Ensure the directory exists
-  mkdirSync(dirname(resolvedPath), { recursive: true });
+  try {
+    mkdirSync(dirname(resolvedPath), { recursive: true });
+  } catch (err) {
+    throw new Error(
+      `Cannot create database directory "${dirname(resolvedPath)}": ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 
-  _db = new Database(resolvedPath);
+  try {
+    _db = new Database(resolvedPath);
+  } catch (err) {
+    throw new Error(
+      `Cannot open database at "${resolvedPath}". The file may be corrupt or inaccessible: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 
   // SQLite pragmas for performance + safety
   _db.pragma("journal_mode = WAL");
@@ -67,7 +79,9 @@ export function closeDatabase(): void {
  */
 export function createTestDatabase(): Database.Database {
   const db = new Database(":memory:");
+  db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
+  db.pragma("busy_timeout = 5000");
 
   const schemaPath = join(__dirname, "schema.sql");
   const schema = readFileSync(schemaPath, "utf-8");
