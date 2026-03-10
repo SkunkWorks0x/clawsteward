@@ -46,12 +46,23 @@ function fatal(message: string): never {
   process.exit(1);
 }
 
+// ─── Banner ──────────────────────────────────────────────────────
+
+const BRAND = chalk.hex("#F97316")("ClawSteward");
+const BRAND_BANNER = `
+  ${chalk.hex("#F97316")("╔═══════════════════════════════════════╗")}
+  ${chalk.hex("#F97316")("║")}  ${chalk.bold.hex("#F97316")("ClawSteward")} ${chalk.gray("v0.1.0")}                  ${chalk.hex("#F97316")("║")}
+  ${chalk.hex("#F97316")("║")}  ${chalk.white("Policy gate & reputation for DeFAI")}   ${chalk.hex("#F97316")("║")}
+  ${chalk.hex("#F97316")("║")}  ${chalk.gray("by ClawStack")}                         ${chalk.hex("#F97316")("║")}
+  ${chalk.hex("#F97316")("╚═══════════════════════════════════════╝")}
+`;
+
 // ─── Program ─────────────────────────────────────────────────────
 
 program
   .name("clawsteward")
   .description(
-    "Pre-signing policy enforcement gate and behavioral reputation system for DeFAI agents",
+    `${BRAND} — Pre-signing policy enforcement gate and behavioral reputation system for DeFAI agents`,
   )
   .version("0.1.0")
   .option("--db <path>", "Database path", "./steward.db")
@@ -61,7 +72,7 @@ program
 
 program
   .command("serve")
-  .description("Start MCP server on stdio (default) or SSE")
+  .description("Start the ClawSteward MCP server for AI agent integration")
   .option("--port <number>", "Port for SSE transport (omit for stdio)")
   .action(async (opts) => {
     const dbPath = program.opts()["db"] as string;
@@ -78,11 +89,10 @@ program
 
     const db = initDatabase(dbPath);
 
-    if (verbose) {
-      console.error(
-        chalk.gray(`[clawsteward] MCP server starting on stdio (db: ${dbPath})`),
-      );
-    }
+    console.error(BRAND_BANNER);
+    console.error(
+      chalk.gray(`  MCP server starting on stdio (db: ${dbPath})\n`),
+    );
 
     try {
       await startStdioServer(db);
@@ -96,10 +106,12 @@ program
 
 program
   .command("register")
-  .description("Register a new agent with ClawSteward")
+  .description(
+    "Register a new agent (e.g., clawsteward register --name my-agent --chain solana --address 7xKX...)",
+  )
   .requiredOption("--name <name>", "Agent name")
-  .requiredOption("--chain <chain>", "Chain (solana)")
-  .requiredOption("--address <pubkey>", "Signer address")
+  .requiredOption("--chain <chain>", "Blockchain (solana)")
+  .requiredOption("--address <pubkey>", "Signer public key")
   .action((opts) => {
     const dbPath = program.opts()["db"] as string;
 
@@ -134,7 +146,7 @@ program
 
 program
   .command("scan")
-  .description("Scan an agent's recent evaluation history")
+  .description("Scan evaluation history and optionally generate a Steward Report")
   .requiredOption("--agent <agent_id>", "Agent ID (UUIDv7)")
   .option("--days <number>", "Lookback window in days", "30")
   .option("--report", "Generate steward-report.md file")
@@ -250,7 +262,7 @@ program
 
 program
   .command("score")
-  .description("Query the Steward Score for an agent")
+  .description("Query an agent's Steward Score, badge, and trend")
   .argument("<agent_id>", "Agent ID (UUIDv7)")
   .action((agentId) => {
     const dbPath = program.opts()["db"] as string;
@@ -304,7 +316,7 @@ program
 
 program
   .command("leaderboard")
-  .description("View the Steward Leaderboard")
+  .description("View agents ranked by Steward Score on the Steward Leaderboard")
   .option("--limit <number>", "Number of agents to show", "20")
   .action((opts) => {
     const dbPath = program.opts()["db"] as string;
@@ -374,7 +386,7 @@ program
 
 program
   .command("export")
-  .description("Export Steward Log entries for an agent")
+  .description("Export Steward Log entries for compliance or analysis")
   .requiredOption("--agent <agent_id>", "Agent ID (UUIDv7)")
   .option("--format <format>", "Output format (json|csv)", "json")
   .action((opts) => {
