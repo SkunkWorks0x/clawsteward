@@ -46,6 +46,23 @@ export function setAgentPaused(db: Database.Database, id: string, paused: boolea
   stmt.run(paused ? 1 : 0, id);
 }
 
+export function getAgentBySignerAddress(
+  db: Database.Database,
+  chain: string,
+  address: string,
+): Agent | undefined {
+  // Search through all agents for matching chain_signers entry
+  const stmt = db.prepare("SELECT * FROM agents");
+  const rows = stmt.all() as Record<string, unknown>[];
+  for (const row of rows) {
+    const signers = JSON.parse(row["chain_signers"] as string) as Record<string, string>;
+    if (signers[chain] === address) {
+      return deserializeAgent(row);
+    }
+  }
+  return undefined;
+}
+
 function deserializeAgent(row: Record<string, unknown>): Agent {
   return {
     id: row["id"] as string,
