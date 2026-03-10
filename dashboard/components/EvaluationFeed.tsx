@@ -79,7 +79,11 @@ function EvaluationRow({ entry }: { entry: EvaluationEntry }) {
         </span>
       </button>
 
-      {expanded && (
+      <div
+        className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          expanded ? "max-h-[500px]" : "max-h-0"
+        }`}
+      >
         <div className="border-t border-white/5 bg-white/[0.02] px-4 py-3">
           <div className="mb-2 grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
             <div>
@@ -113,7 +117,7 @@ function EvaluationRow({ entry }: { entry: EvaluationEntry }) {
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

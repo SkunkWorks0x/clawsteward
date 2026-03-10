@@ -66,7 +66,7 @@ export default function LeaderboardTable({
       <table className="w-full">
         <thead className="border-b border-white/10">
           <tr>
-            <th className={thClass} onClick={() => handleSort("rank")}>
+            <th className={`${thClass} text-right`} onClick={() => handleSort("rank")}>
               # {sortKey === "rank" && (sortAsc ? "\u25B2" : "\u25BC")}
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#94A3B8]">
@@ -101,7 +101,7 @@ export default function LeaderboardTable({
               key={entry.agent_id}
               className="transition-colors hover:bg-white/5"
             >
-              <td className="px-4 py-3 font-mono text-sm text-[#94A3B8]">
+              <td className="px-4 py-3 text-right font-mono text-sm text-[#94A3B8]">
                 {entry.rank}
               </td>
               <td className="px-4 py-3">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import NavLinks from "@/components/NavLinks";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,9 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Steward Leaderboard — ClawStack",
-  description:
-    "DeFAI agent compliance leaderboard powered by ClawSteward behavioral reputation system",
+  title: "Steward Leaderboard | ClawStack",
+  description: "Public behavioral reputation scores for DeFAI agents. Powered by ClawSteward.",
 };
 
 export default function RootLayout({
@@ -40,20 +40,7 @@ export default function RootLayout({
                 Steward Leaderboard
               </span>
             </div>
-            <nav className="flex gap-6 text-sm">
-              <Link
-                href="/"
-                className="text-[#94A3B8] transition-colors hover:text-white"
-              >
-                Leaderboard
-              </Link>
-              <Link
-                href="/about"
-                className="text-[#94A3B8] transition-colors hover:text-white"
-              >
-                About
-              </Link>
-            </nav>
+            <NavLinks />
           </div>
         </header>
 

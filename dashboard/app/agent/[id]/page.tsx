@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getDatabase } from "@/lib/db";
 import {
   getAgentDetail,
@@ -103,15 +104,7 @@ export default async function AgentDetailPage({
   }
 
   if (!agent) {
-    return (
-      <div className="rounded-xl bg-[#1E293B] p-12 text-center">
-        <h1 className="text-xl font-bold text-white">Agent Not Found</h1>
-        <p className="mt-2 text-sm text-[#94A3B8]">No agent exists with ID: {id}</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-[#F97316] hover:underline">
-          ← Back to Leaderboard
-        </Link>
-      </div>
-    );
+    notFound();
   }
 
   const scoreColor = getScoreColor(agent.badge);
