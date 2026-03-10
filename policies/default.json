@@ -1,0 +1,42 @@
+{
+  "id": "default",
+  "name": "Default Steward Policy",
+  "version": 1,
+  "rules": [
+    {
+      "id": "max-tx-value",
+      "type": "max_usd_value",
+      "params": { "max": 10000 },
+      "severity": "critical",
+      "enabled": true
+    },
+    {
+      "id": "slippage-guard",
+      "type": "max_slippage_pct",
+      "params": { "max": 3.0 },
+      "severity": "high",
+      "enabled": true
+    },
+    {
+      "id": "daily-volume-cap",
+      "type": "velocity_24h_usd",
+      "params": { "max": 50000 },
+      "severity": "high",
+      "enabled": true
+    },
+    {
+      "id": "hourly-tx-limit",
+      "type": "velocity_1h_count",
+      "params": { "max": 20 },
+      "severity": "medium",
+      "enabled": true
+    },
+    {
+      "id": "auto-pause",
+      "type": "auto_pause_consecutive_violations",
+      "params": { "threshold": 3, "window_minutes": 60 },
+      "severity": "critical",
+      "enabled": true
+    }
+  ]
+}
