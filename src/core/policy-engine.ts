@@ -138,6 +138,11 @@ function parseRule(json: unknown, index: number): PolicyRule {
   if (!obj["params"] || typeof obj["params"] !== "object" || Array.isArray(obj["params"])) {
     throw new PolicyParseError(`Rule '${obj["id"]}' must have an object 'params'`);
   }
+  // Guard against prototype pollution via crafted policy JSON
+  const paramsObj = obj["params"] as Record<string, unknown>;
+  if (Object.hasOwn(paramsObj, "__proto__") || Object.hasOwn(paramsObj, "constructor") || Object.hasOwn(paramsObj, "prototype")) {
+    throw new PolicyParseError(`Rule '${obj["id"]}' params contains forbidden key (__proto__, constructor, or prototype)`);
+  }
   if (typeof obj["enabled"] !== "boolean") {
     throw new PolicyParseError(`Rule '${obj["id"]}' must have a boolean 'enabled'`);
   }

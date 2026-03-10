@@ -164,6 +164,8 @@ export function getViolationCount(db: Database.Database, agentId: string): numbe
   return row.count;
 }
 
+const VALID_SEVERITIES = new Set(["critical", "high", "medium", "low"]);
+
 export function getRecentViolations(
   db: Database.Database,
   agentId: string,
@@ -175,6 +177,10 @@ export function getRecentViolations(
   const params: unknown[] = [agentId, sinceTimestamp];
 
   if (severity) {
+    // Validate severity against allowlist to prevent LIKE pattern injection
+    if (!VALID_SEVERITIES.has(severity)) {
+      throw new Error(`Invalid severity filter: ${severity}. Valid: critical, high, medium, low`);
+    }
     // Filter by severity within the violations JSON
     sql += " AND violations LIKE ?";
     params.push(`%"severity":"${severity}"%`);

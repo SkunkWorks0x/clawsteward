@@ -12,7 +12,7 @@ import {
 describe("StewardEvaluateInputSchema", () => {
   it("accepts valid evaluate input", () => {
     const result = StewardEvaluateInputSchema.safeParse({
-      agent_id: "01912345-6789-7abc-def0-123456789abc",
+      agent_id: "01912345-6789-7abc-8def-0123456789ab",
       raw_transaction_base64: "AQAAAA==",
       chain: "solana",
     });
@@ -21,7 +21,7 @@ describe("StewardEvaluateInputSchema", () => {
 
   it("accepts evaluate input with optional policy_set_id", () => {
     const result = StewardEvaluateInputSchema.safeParse({
-      agent_id: "agent-1",
+      agent_id: "01912345-6789-7abc-8def-0123456789ab",
       raw_transaction_base64: "dHgxMjM=",
       chain: "solana",
       policy_set_id: "conservative",
@@ -51,7 +51,7 @@ describe("StewardEvaluateInputSchema", () => {
 
   it("rejects unsupported chain value", () => {
     const result = StewardEvaluateInputSchema.safeParse({
-      agent_id: "agent-1",
+      agent_id: "01912345-6789-7abc-8def-0123456789ab",
       raw_transaction_base64: "AQAAAA==",
       chain: "ethereum",
     });
@@ -60,7 +60,7 @@ describe("StewardEvaluateInputSchema", () => {
 
   it("rejects missing raw_transaction_base64", () => {
     const result = StewardEvaluateInputSchema.safeParse({
-      agent_id: "agent-1",
+      agent_id: "01912345-6789-7abc-8def-0123456789ab",
       chain: "solana",
     });
     expect(result.success).toBe(false);
@@ -68,7 +68,7 @@ describe("StewardEvaluateInputSchema", () => {
 
   it("rejects empty raw_transaction_base64", () => {
     const result = StewardEvaluateInputSchema.safeParse({
-      agent_id: "agent-1",
+      agent_id: "01912345-6789-7abc-8def-0123456789ab",
       raw_transaction_base64: "",
       chain: "solana",
     });
@@ -144,7 +144,7 @@ describe("StewardRegisterInputSchema", () => {
 describe("StewardScoreInputSchema", () => {
   it("accepts valid score input", () => {
     const result = StewardScoreInputSchema.safeParse({
-      agent_id: "agent-uuid-v7",
+      agent_id: "01912345-6789-7abc-8def-0123456789ab",
     });
     expect(result.success).toBe(true);
   });
@@ -217,7 +217,7 @@ describe("StewardLeaderboardInputSchema", () => {
 
 describe("StewardScanInputSchema", () => {
   it("accepts valid scan input with defaults", () => {
-    const result = StewardScanInputSchema.safeParse({ agent_id: "agent-1" });
+    const result = StewardScanInputSchema.safeParse({ agent_id: "01912345-6789-7abc-8def-0123456789ab" });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.days).toBe(30);
@@ -225,7 +225,7 @@ describe("StewardScanInputSchema", () => {
   });
 
   it("accepts custom days", () => {
-    const result = StewardScanInputSchema.safeParse({ agent_id: "agent-1", days: 90 });
+    const result = StewardScanInputSchema.safeParse({ agent_id: "01912345-6789-7abc-8def-0123456789ab", days: 90 });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.days).toBe(90);
@@ -238,17 +238,17 @@ describe("StewardScanInputSchema", () => {
   });
 
   it("rejects days over 365", () => {
-    const result = StewardScanInputSchema.safeParse({ agent_id: "agent-1", days: 500 });
+    const result = StewardScanInputSchema.safeParse({ agent_id: "01912345-6789-7abc-8def-0123456789ab", days: 500 });
     expect(result.success).toBe(false);
   });
 
   it("rejects non-integer days", () => {
-    const result = StewardScanInputSchema.safeParse({ agent_id: "agent-1", days: 30.5 });
+    const result = StewardScanInputSchema.safeParse({ agent_id: "01912345-6789-7abc-8def-0123456789ab", days: 30.5 });
     expect(result.success).toBe(false);
   });
 
   it("rejects days of 0", () => {
-    const result = StewardScanInputSchema.safeParse({ agent_id: "agent-1", days: 0 });
+    const result = StewardScanInputSchema.safeParse({ agent_id: "01912345-6789-7abc-8def-0123456789ab", days: 0 });
     expect(result.success).toBe(false);
   });
 });

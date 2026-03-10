@@ -3,31 +3,45 @@
 
 import { z } from "zod";
 
+// ─── Constants ──────────────────────────────────────────────────
+
+// UUIDv7 format: 8-4-4-4-12 hex with version 7
+const UUIDV7_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Solana tx max is 1232 bytes; base64 of that is ~1644 chars. Allow generous headroom.
+const MAX_TX_BASE64_LENGTH = 10_000;
+
+// Reasonable max lengths to prevent memory exhaustion from oversized inputs
+const MAX_AGENT_NAME_LENGTH = 256;
+const MAX_ADDRESS_LENGTH = 256;
+const MAX_POLICY_SET_ID_LENGTH = 256;
+
 // ─── Tool Input Schemas (Zod) ───────────────────────────────────
 
 export const StewardEvaluateInputSchema = z.object({
-  agent_id: z.string().min(1).describe("Agent UUIDv7 identifier"),
-  raw_transaction_base64: z.string().min(1).describe("Base64-encoded unsigned Solana transaction"),
+  agent_id: z.string().min(1).max(64).regex(UUIDV7_REGEX, "Must be a valid UUIDv7").describe("Agent UUIDv7 identifier"),
+  raw_transaction_base64: z.string().min(1).max(MAX_TX_BASE64_LENGTH).describe("Base64-encoded unsigned Solana transaction (max 10KB)"),
   chain: z.literal("solana").describe("Target chain (solana only in v1)"),
-  policy_set_id: z.string().optional().describe("Policy set ID (defaults to 'default')"),
+  policy_set_id: z.string().max(MAX_POLICY_SET_ID_LENGTH).optional().describe("Policy set ID (defaults to 'default')"),
 });
 
 export const StewardRegisterInputSchema = z.object({
-  name: z.string().min(1).describe("Human-readable agent name"),
+  name: z.string().min(1).max(MAX_AGENT_NAME_LENGTH).describe("Human-readable agent name"),
   chain_signers: z
     .array(
       z.object({
         chain: z.literal("solana").describe("Chain identifier"),
-        address: z.string().min(1).describe("Signer public key on this chain"),
+        address: z.string().min(1).max(MAX_ADDRESS_LENGTH).describe("Signer public key on this chain"),
       }),
     )
     .min(1)
+    .max(10)
     .describe("Chain signer addresses"),
-  policy_set_id: z.string().optional().describe("Default policy set to associate"),
+  policy_set_id: z.string().max(MAX_POLICY_SET_ID_LENGTH).optional().describe("Default policy set to associate"),
 });
 
 export const StewardScoreInputSchema = z.object({
-  agent_id: z.string().min(1).describe("Agent UUIDv7 identifier"),
+  agent_id: z.string().min(1).max(64).regex(UUIDV7_REGEX, "Must be a valid UUIDv7").describe("Agent UUIDv7 identifier"),
 });
 
 export const StewardLeaderboardInputSchema = z.object({
@@ -36,7 +50,7 @@ export const StewardLeaderboardInputSchema = z.object({
 });
 
 export const StewardScanInputSchema = z.object({
-  agent_id: z.string().min(1).describe("Agent UUIDv7 identifier to scan"),
+  agent_id: z.string().min(1).max(64).regex(UUIDV7_REGEX, "Must be a valid UUIDv7").describe("Agent UUIDv7 identifier to scan"),
   days: z.number().int().min(1).max(365).optional().default(30).describe("Lookback window in days (default 30)"),
 });
 
