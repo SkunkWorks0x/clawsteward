@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+.env*.local
 data/
 *.db
 *.db-journal
@@ -9,6 +10,7 @@ data/
 coverage/
 *.tsbuildinfo
 .DS_Store
+.claude/settings.local.json
 dashboard/node_modules/
 dashboard/.next/
 dashboard/out/
