@@ -1,0 +1,56 @@
+{
+  "id": "mainnet-default",
+  "name": "Mainnet Default Steward Policy",
+  "version": 1,
+  "description": "Production policy set with conservative thresholds for mainnet. Tighter than devnet defaults.",
+  "rules": [
+    {
+      "id": "max-tx-value",
+      "type": "max_usd_value",
+      "params": { "max": 5000 },
+      "severity": "critical",
+      "enabled": true,
+      "_note": "Halved from devnet default (10000). Raise per-agent after confidence period."
+    },
+    {
+      "id": "slippage-guard",
+      "type": "max_slippage_pct",
+      "params": { "max": 1.5 },
+      "severity": "critical",
+      "_note": "Tightened from 3.0% to 1.5% — real money, tighter tolerance.",
+      "enabled": true
+    },
+    {
+      "id": "daily-volume-cap",
+      "type": "velocity_24h_usd",
+      "params": { "max": 25000 },
+      "severity": "high",
+      "_note": "Halved from devnet default (50000).",
+      "enabled": true
+    },
+    {
+      "id": "hourly-tx-limit",
+      "type": "velocity_1h_count",
+      "params": { "max": 10 },
+      "severity": "medium",
+      "_note": "Halved from devnet default (20). Prevents runaway agent loops.",
+      "enabled": true
+    },
+    {
+      "id": "auto-pause",
+      "type": "auto_pause_consecutive_violations",
+      "params": { "threshold": 2, "window_minutes": 30 },
+      "severity": "critical",
+      "_note": "More aggressive than devnet (was 3/60min). On mainnet, 2 consecutive violations in 30min triggers pause.",
+      "enabled": true
+    },
+    {
+      "id": "max-position-size",
+      "type": "max_position_usd",
+      "params": { "max": 10000 },
+      "severity": "high",
+      "_note": "New for mainnet — cap single position exposure.",
+      "enabled": true
+    }
+  ]
+}
